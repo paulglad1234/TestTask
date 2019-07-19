@@ -17,4 +17,17 @@ Update 2:<br>
 Update 3:<br>
 Теперь принимает данные в формате json.<br><br>
 Update 4:<br>
-+Autofac
++Autofac<br>
+<h3>Вид запросов:</h3>
+<table border="0">
+	<tr align="left">
+		<td valign="top">
+			POST:<br>
+			{ <br>"value":100<br>}
+		</td>
+		<td valign="top">
+			GET:<br>
+			{ <br>"from":49246,<br>"till":59222<br>}
+		</td>
+	</tr>
+</table>
