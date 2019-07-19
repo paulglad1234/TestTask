@@ -1,61 +1,58 @@
 ﻿using System.IO;
 using MyFirstWebApplication.Models;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace MyFirstWebApplication.Services
 {
     public class JsonFileWorker : IFileWorker
     {
-        private JsonRecord _record;
         public void AddToEnd(string filename, int value)
         {
-            if (_record == null)
-                _record = new JsonRecord(filename);
-            _record.Add(value);
-            using (var streamWriter = new StreamWriter(filename))
+            using (var streamWriter = new StreamWriter(filename, true))
             {
-                streamWriter.Write(JsonConvert.SerializeObject(_record));
+                streamWriter.WriteLine(JsonConvert.SerializeObject(new JsonRecord(value))+",");
             }
         }
 
         public int GetSum(string filename, int from, int till)
         {
-            if (_record == null)
-                _record = new JsonRecord(filename);
-            var fromIndex = FindFromIndex(from);
-            var tillIndex = FindTillIndex(till);
+            var json = JObject.Parse("{\"objects\":["+File.ReadAllText(filename)+"]}");
+            var fromIndex = FindFromIndex(from, json);
+            var tillIndex = FindTillIndex(till, json);
             if (fromIndex == -1 || tillIndex == -1)
                 return 0;
             var result = 0;
             for (var i = fromIndex; i <= tillIndex; i++)
             {
-                result += _record.Value[i];
+                result += (int)json["objects"][i]["Value"];
             }
 
             return result;
         }
 
-        private int FindFromIndex(int from)
+        private static int FindFromIndex(int from, JObject json)
         {
-            if (_record.Time[0] >= from)
+            if ((int)json["objects"][0]["Time"] >= from)
                 return 0;
-            for (var i = 1; i < _record.Time.Count; i++)
+            for (var i = 1; i < ((JArray)json["objects"]).Count; i++)
             {
-                if (_record.Time[i - 1] < from && from <= _record.Time[i])
+                if ((int)json["objects"][i - 1]["Time"] < from && from <= (int)json["objects"][i]["Time"])
                     return i;
             }
 
             return -1;
         }
 
-        private int FindTillIndex(int till)
+        private static int FindTillIndex(int till, JObject json)
         {
-            if (_record.Time.Count > 0)
-                if (_record.Time[_record.Time.Count - 1] <= till)
-                    return _record.Time.Count - 1;
-            for (var i = 0; i < _record.Time.Count - 1; i++)
+            var lastIndex = ((JArray) json["objects"]).Count - 1;
+            if (lastIndex != 0)
+                if ((int)json["objects"][lastIndex]["Time"] <= till)
+                    return lastIndex;
+            for (var i = 0; i < lastIndex; i++)
             {
-                if (_record.Time[i] <= till && till < _record.Time[i + 1])
+                if ((int)json["objects"][i]["Time"] <= till && till < (int)json["objects"][i + 1]["Time"])
                     return i;
             }
 
