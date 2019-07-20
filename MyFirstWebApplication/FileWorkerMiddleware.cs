@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Http;
 using System.Threading.Tasks;
 using MyFirstWebApplication.Services;
-using Newtonsoft.Json.Linq;
+using Newtonsoft.Json;
 
 namespace MyFirstWebApplication
 {
@@ -18,31 +18,28 @@ namespace MyFirstWebApplication
 
         public async Task InvokeAsync(HttpContext context)
         {
-            const string filename = "values.json";
-
             var request = RequestBodyConverter.BodyToString(context.Request);
 
-            if (request != string.Empty)
+            if (!string.IsNullOrEmpty(request))
             {
-                var jsonRequest = JObject.Parse(request);
+                dynamic jsonRequest = JsonConvert.DeserializeObject(request);
                 if (context.Request.Method == "POST")
-                    await PostHandler(jsonRequest, filename);
+                    await PostHandler(jsonRequest);
                 else
-                    await GetHandler(context, jsonRequest, filename);
+                    await GetHandler(context, jsonRequest);
             }
             else await _next.Invoke(context);
         }
 
-        private async Task PostHandler(JObject request, string filename)
+        private async Task PostHandler(dynamic request)
         {
-            await Task.Run(() => { _fileWorker.AddToEnd(filename, (int)request["value"]); });
+            await Task.Run(() => { _fileWorker.AddToEnd((int)request.value); });
         }
 
-        private async Task GetHandler(HttpContext context, JObject request, string filename)
+        private async Task GetHandler(HttpContext context, dynamic request)
         {
-            await context.Response.WriteAsync(Newtonsoft.Json.JsonConvert.SerializeObject(new {
-                sum = _fileWorker.GetSum(filename, (int)request["from"],
-                    (int)request["till"])}));
+            await context.Response.WriteAsync(JsonConvert.SerializeObject(new {
+                sum = _fileWorker.GetSum((int)request.from, (int)request.till)}));
         }
     }
 }

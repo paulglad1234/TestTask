@@ -1,4 +1,3 @@
-using System;
 using System.IO;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Internal;
@@ -26,8 +25,6 @@ namespace MyFirstWebApplication
                 // Workaround so MVC action will be able to read body as well
                 request.Body = initialBody;
             }
-
-            return string.Empty;
         }
     }
 }

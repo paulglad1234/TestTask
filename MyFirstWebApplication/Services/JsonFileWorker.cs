@@ -1,23 +1,27 @@
-﻿using System.IO;
+﻿using System;
+using System.Collections.Generic;
+using System.IO;
 using MyFirstWebApplication.Models;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 
 namespace MyFirstWebApplication.Services
 {
     public class JsonFileWorker : IFileWorker
     {
-        public void AddToEnd(string filename, int value)
+        private const string Filename = "values.json";
+        public void AddToEnd(int value)
         {
-            using (var streamWriter = new StreamWriter(filename, true))
+            ClearFileIfNewDayStarted();
+            using (var streamWriter = new StreamWriter(Filename, true))
             {
-                streamWriter.WriteLine(JsonConvert.SerializeObject(new JsonRecord(value))+",");
+                streamWriter.WriteLine(JsonConvert.SerializeObject(new JsonRecord(value)));
             }
         }
 
-        public int GetSum(string filename, int from, int till)
+        public int GetSum(int from, int till)
         {
-            var json = JObject.Parse("{\"objects\":["+File.ReadAllText(filename)+"]}");
+            ClearFileIfNewDayStarted();
+            var json = ReadJson();
             var fromIndex = FindFromIndex(from, json);
             var tillIndex = FindTillIndex(till, json);
             if (fromIndex == -1 || tillIndex == -1)
@@ -25,34 +29,67 @@ namespace MyFirstWebApplication.Services
             var result = 0;
             for (var i = fromIndex; i <= tillIndex; i++)
             {
-                result += (int)json["objects"][i]["Value"];
+                result += json[i].Value;
             }
 
             return result;
         }
 
-        private static int FindFromIndex(int from, JObject json)
+        private static void ClearFileIfNewDayStarted()
         {
-            if ((int)json["objects"][0]["Time"] >= from)
-                return 0;
-            for (var i = 1; i < ((JArray)json["objects"]).Count; i++)
+            var now = DateTime.Now.Hour * 3600 + DateTime.Now.Minute * 60 + DateTime.Now.Second;
+            var clear = false;
+            using (var streamReader = new StreamReader(Filename))
             {
-                if ((int)json["objects"][i - 1]["Time"] < from && from <= (int)json["objects"][i]["Time"])
+                var first = streamReader.ReadLine();
+                if (!string.IsNullOrEmpty(first))
+                {
+                    var firstObject = JsonConvert.DeserializeObject<JsonRecord>(first);
+                    if (now < firstObject.Time)
+                        clear = true;
+                }
+            }
+            if (clear)
+                File.WriteAllText(Filename, string.Empty);
+        }
+        private static List<JsonRecord> ReadJson()
+        {
+            var json = new List<JsonRecord>();
+            using (var streamReader = new StreamReader(Filename))
+            {
+                var jRecord = streamReader.ReadLine();
+                while (!string.IsNullOrEmpty(jRecord))
+                {
+                    json.Add(JsonConvert.DeserializeObject<JsonRecord>(jRecord));
+                    jRecord = streamReader.ReadLine();
+                }
+            }
+
+            return json;
+        }
+
+        private static int FindFromIndex(int from, List<JsonRecord> json)
+        {
+            if (json[0].Time >= from)
+                return 0;
+            for (var i = 1; i < json.Count; i++)
+            {
+                if (json[i - 1].Time < from && from <= json[i].Time)
                     return i;
             }
 
             return -1;
         }
 
-        private static int FindTillIndex(int till, JObject json)
+        private static int FindTillIndex(int till, List<JsonRecord> json)
         {
-            var lastIndex = ((JArray) json["objects"]).Count - 1;
+            var lastIndex = json.Count - 1;
             if (lastIndex != 0)
-                if ((int)json["objects"][lastIndex]["Time"] <= till)
+                if (json[lastIndex].Time <= till)
                     return lastIndex;
             for (var i = 0; i < lastIndex; i++)
             {
-                if ((int)json["objects"][i]["Time"] <= till && till < (int)json["objects"][i + 1]["Time"])
+                if (json[i].Time <= till && till < json[i + 1].Time)
                     return i;
             }
 
